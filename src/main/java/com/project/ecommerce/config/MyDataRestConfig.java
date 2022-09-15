@@ -4,9 +4,9 @@ import com.project.ecommerce.entity.Country;
 import com.project.ecommerce.entity.Product;
 import com.project.ecommerce.entity.ProductCategory;
 import com.project.ecommerce.entity.State;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.rest.core.config.RepositoryRestConfiguration;
-import org.springframework.data.rest.core.mapping.ExposureConfigurer;
 import org.springframework.data.rest.webmvc.config.RepositoryRestConfigurer;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -20,7 +20,10 @@ import java.util.Set;
 @Configuration
 public class MyDataRestConfig implements RepositoryRestConfigurer {
 
-    private EntityManager entityManager;
+    @Value("${allowed.origins}")
+    private String[] allowedOrigins;
+
+    private final EntityManager entityManager;
 
     public MyDataRestConfig(EntityManager theEntityManager) {
         entityManager = theEntityManager;
@@ -30,19 +33,22 @@ public class MyDataRestConfig implements RepositoryRestConfigurer {
     public void configureRepositoryRestConfiguration(RepositoryRestConfiguration config, CorsRegistry cors) {
         RepositoryRestConfigurer.super.configureRepositoryRestConfiguration(config, cors);
 
-        HttpMethod[] theUnsupportedActions = {HttpMethod.PUT, HttpMethod.POST, HttpMethod.DELETE};
+        HttpMethod[] unsupportedActions = {HttpMethod.PUT, HttpMethod.POST, HttpMethod.DELETE, HttpMethod.PATCH};
 
         // Disable HTTP Methods: PUT, POST and DELETE
-        diableHttpMethods(Product.class, config, theUnsupportedActions);
-        diableHttpMethods(ProductCategory.class, config, theUnsupportedActions);
-        diableHttpMethods(Country.class, config, theUnsupportedActions);
-        diableHttpMethods(State.class, config, theUnsupportedActions);
+        disableHttpMethods(Product.class, config, unsupportedActions);
+        disableHttpMethods(ProductCategory.class, config, unsupportedActions);
+        disableHttpMethods(Country.class, config, unsupportedActions);
+        disableHttpMethods(State.class, config, unsupportedActions);
 
         // Call an internal helper method
         exposeIds(config);
+
+        // Configure CORS mapping
+        cors.addMapping(config.getBasePath() + "/**").allowedOrigins(allowedOrigins);
     }
 
-    private void diableHttpMethods(Class theClass, RepositoryRestConfiguration config, HttpMethod[] theUnsupportedActions) {
+    private void disableHttpMethods(Class theClass, RepositoryRestConfiguration config, HttpMethod[] theUnsupportedActions) {
         config
                 .getExposureConfiguration()
                 .forDomainType(theClass)
